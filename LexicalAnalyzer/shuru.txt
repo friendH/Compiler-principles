@@ -1,5 +1,15 @@
-WHilE (next!=NULl)  do begin
+WHIlE (         next<>NulL)  
+DO BEGIN  $
+x,y,z,n:integer
+m:real
+x:=6$; e:=12.5456646+0.75;
+n:= 16486767815;  ///方式丰富的
+uu#uu#  for i:=1 to 10 do  y:= x;    
+if(x<>23) then
+begin
+ y:=0x123;
+ z:=0y25;
+end;
 
-//134154hjskdfhsjf
-
-x=0Y1G; Y=x8y+z end;
+integer y:=xy+z            
+END;

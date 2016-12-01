@@ -25,5 +25,7 @@ public class Tag {
     /* 后面添加 */  
     THEN    = 276,
     END     = 277,
-	BEGIN   = 278;
+	BEGIN   = 278,
+	FOR     = 279,
+	TO      = 280;
 }

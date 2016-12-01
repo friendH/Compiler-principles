@@ -7,11 +7,15 @@ import java.util.*;
 public class Lexer {
 	 public static int line = 1;     /* 记录行号 */  
 	    char peek = ' ';        /* 下一个读入字符 */  
-	    Hashtable<String, Word> words =   
-	        new Hashtable<String, Word>();  
+	   /* Hashtable<String, Word> words =   
+	        new Hashtable<String, Word>();*/
+	    
+	    private LinkedHashMap<String, Word> words =   
+		        new LinkedHashMap<String, Word>(); 
 	    /* 符号表 */  
-	    private Hashtable<Token, String> table =   
-	        new Hashtable<Token, String>();  
+	    private LinkedHashMap<Token, String> table =   
+	        new LinkedHashMap<Token, String>(); 
+	    //LinkedHashMap<K, V>
 	    /* token序列 */  
 	    private List<String> tokens =   
 	        new LinkedList<String> ();  
@@ -31,14 +35,26 @@ public class Lexer {
 	        writer.write("[符号]          [符号类型信息]\n");  
 	        writer.write("\r\n");  
 	          
-	        Enumeration<Token> e = table.keys();  
+	        /*Enumeration<Token> e = table.keys();  
 	        while( e.hasMoreElements() ){  
 	            Token token = (Token)e.nextElement();  
 	            String desc = table.get(token);  
 	              
-	            /* 写入文件 */  
+	                                   写入文件 
 	            writer.write(token + "\t\t\t" + desc + "\r\n");  
-	        }  
+	        } */ 
+	        
+	        for(Iterator iterator = words.keySet().iterator();iterator.hasNext();){
+	        	Object key = iterator.next();
+	        	writer.write(key + "\t\t\t" + "keyword" + "\r\n"); 
+	        	
+	        }
+	        
+	        for(Iterator iterator = table.keySet().iterator();iterator.hasNext();){
+	        	Object key = iterator.next();
+	        	writer.write(key + "\t\t\t" + "ID" + "\r\n"); 
+	        	
+	        }
 	              
 	        writer.flush();  
 	    }  
@@ -89,11 +105,15 @@ public class Lexer {
 	        this.reserve(new Word("do", Tag.DO));
 	        this.reserve(new Word("begin",Tag.BEGIN));
 	        this.reserve(new Word("end", Tag.END));
+	        this.reserve(new Word("for", Tag.FOR));
+	        this.reserve(new Word("to", Tag.TO));
 	          
 	        /* 类型 */  
 	        this.reserve(Word.True);  
 	        this.reserve(Word.False);  
-	        this.reserve(Type.Int);  
+	        this.reserve(Type.Integer);
+	        this.reserve(Type.Real);
+	        this.reserve(Type.String);
 	        this.reserve(Type.Char);  
 	        this.reserve(Type.Bool);  
 	        this.reserve(Type.Float);
@@ -118,8 +138,16 @@ public class Lexer {
 	        this.peek = ' ';  
 	        return true;  
 	    }  
+	    
+	    
+	    
 	      
-	    public Token scan() throws IOException {  
+	    public Token scan() throws IOException {
+	    	
+	    	if(peek == '$' || peek == '#'){
+	    		tokens.add("第"+line+"行出现非法字符");
+	    		peek = ' ';
+	    	}
 	        /* 消除空白 */   
 	        for( ; ; readch() ) {  
 	            if(peek == ' ' || peek == '\t')  
@@ -157,6 +185,15 @@ public class Lexer {
 	            else {  
 	                tokens.add("<=>");  
 	                return new Token('=');  
+	            }
+	        case ':' :  
+	            if (readch('=')) {  
+	                tokens.add("<:=>");  
+	                return Word.eq1;   
+	            }  
+	            else {  
+	                tokens.add("<:>");  
+	                return new Token(':');  
 	            }  
 	        case '>' :  
 	            if (readch('=')) {  
@@ -167,15 +204,24 @@ public class Lexer {
 	                tokens.add("<>>");  
 	                return new Token('>');  
 	            }  
-	        case '<' :  
-	            if (readch('=')) {  
-	                tokens.add("<<=>");  
+	        case '<' :
+	        	readch();
+	            if (peek == '=') {  
+	                tokens.add("<<=>");
+	                peek = ' ';
 	                return Word.le;  
 	            }
+	            else if (peek == '>') {
+	            	tokens.add("<<>>"); 
+	            	peek = ' ';
+	                return Word.le;
+				}
 	            else {  
 	                tokens.add("<<>");  
+	                peek = ' ';
 	                return new Token('<');  
-	            }  
+	            } 
+	            
 	        case '!' :  
 	            if (readch('=')) {  
 	                tokens.add("<!=>");  
@@ -210,10 +256,26 @@ public class Lexer {
 	    	                readch();  
 	    	            } while (Character.isDigit(peek) || (peek >= 'A' && peek <= 'P'));  
 					}
+	        		else if (peek == '.') {
+	        			float x = 0;
+	 		            float d = 10;
+	 		            for( ; ; ) {
+	 		            	readch();
+	 		            	if(!Character.isDigit(peek))break;
+	 		            	x = x + Character.digit(peek, 10) / d;
+	 		            	d = d * 10;
+	 		            }
+	 		            Real real = new Real(x);  
+	 		            tokens.add("<real,"+real.toString()+">");
+	 		            //table.put(real, "Real");
+	 		      
+	 		            return real; 
+					}
+	        		
 	        		
 	        		 Num n = new Num(value);  
 			            tokens.add("<num,"+n.toString()+">");  
-			            table.put(n, "Num");
+			            //table.put(n, "Num");
 			            
 			            //判断是否超出int范围
 			            if(value<0){
@@ -229,14 +291,17 @@ public class Lexer {
 		            } while (Character.isDigit(peek));  
 		            
 		            if(peek != '.') {
-			            Num n = new Num(value);  
-			            tokens.add("<num,"+n.toString()+">");  
-			            table.put(n, "Num");
 			            
+		            	Num n = new Num(value);
 			            //判断是否超出int范围
 			            if(value<0){
+			            	tokens.add("===================>第 "+line+" 行出错超出数据范围");
 			            	System.out.println("第 "+line+" 行出错超出数据范围");
-			            }
+			            }else {
+			            	  
+				            tokens.add("<num,"+n.toString()+">");  
+				            //table.put(n, "Num");
+						}
 			            return n;  
 			        }
 		            
@@ -249,7 +314,8 @@ public class Lexer {
 		            	d = d * 10;
 		            }
 		            Real real = new Real(x);  
-		            tokens.add("<real,"+real.toString()+">");  
+		            tokens.add("<real,"+real.toString()+">");
+		            //table.put(real, "Real");
 		      
 		            return real; 
 	        	}
@@ -271,11 +337,12 @@ public class Lexer {
 	            String s = sb.toString(); 
 	            String s1 = s;
 	            s = s.toLowerCase();
-	            Word w = (Word)words.get(s);  
+	            Word w = (Word)words.get(s);
+	            Word wd = new Word(s1, Tag.ID);
 	              
 	            /* 如果是关键字或者是类型的话，w不应该是空的 */  
 	            if(w != null) {  
-	                table.put(w, "KeyWord or Type");  
+	                //table.put(wd, "KeyWord or Type");  
 	                tokens.add("<"+s1+">");  
 	                return w; /* 说明是关键字 或者是类型名 */  
 	            }  
@@ -283,18 +350,26 @@ public class Lexer {
 	            /* 否则就是一个标识符id */  
 	            w = new Word(s, Tag.ID);  
 	            tokens.add("<id,"+s1+">");  
-	            table.put(w, "id");  
-	            words.put(s,  w);  
+	            table.put(wd, "id");  
+	            //words.put(s,  w);  
 	              
 	            return w;  
 	        }  
 	          
 	        /* peek中的任意字符都被认为是词法单元返回 */  
 	        Token tok  = new Token(peek);  
-	        // table.put(tok, "Token or Seprator");  
-	        if ((int)peek != 0xffff){   
-	            tokens.add("<"+tok.toString()+">"); 
-	            System.out.println(tok.toString());
+	     
+	        if ((int)peek != 0xffff){ 
+
+		    	if(peek == '$' || peek == '#'){
+		    		tokens.add("第"+line+"行出现非法字符");
+		    		peek = ' ';
+		    	}else {
+		    		//table.put(tok, "Token or Seprator"); 
+		            tokens.add("<"+tok.toString()+">"); 
+		            System.out.println(tok.toString());
+				}
+	        
 	           
 	        }
 	        	
